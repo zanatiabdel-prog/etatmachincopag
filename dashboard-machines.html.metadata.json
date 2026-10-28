@@ -1,0 +1,5 @@
+{
+  "summary":  "Dashboard industriel avec CRUD complet : Ajouter/Modifier/Supprimer des machines via modal, saisie d'observation, date automatique de problème/arrêt, tableau paginable avec filtres zone et état, graphiques et alertes.",
+  "updatedAt":  "2026-10-28T21:55:23.561983400Z",
+  "userFacing":  true
+}

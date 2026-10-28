@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dashboard – Suivi Machines</title>
+<script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+<style>
+*{box-sizing:border-box;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px;}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.dot-g{background:#22c55e;animation:pg 2s infinite;}.dot-r{background:#ef4444;animation:pr 2s infinite;}.dot-o{background:#f97316;animation:po 2s infinite;}
+@keyframes pg{0%,100%{box-shadow:0 0 3px #22c55e}50%{box-shadow:0 0 10px #22c55e}}
+@keyframes pr{0%,100%{box-shadow:0 0 3px #ef4444}50%{box-shadow:0 0 10px #ef4444}}
+@keyframes po{0%,100%{box-shadow:0 0 3px #f97316}50%{box-shadow:0 0 10px #f97316}}
+.badge{display:inline-flex;align-items:center;padding:1px 9px;border-radius:9999px;font-size:11px;font-weight:700;}
+.bg{background:#22c55e22;color:#22c55e}.br{background:#ef444422;color:#ef4444}.bo{background:#f9731622;color:#f97316}
+.fbtn{border:1px solid #334155;border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer;color:#94a3b8;background:#0f172a;transition:all .2s;}
+.fbtn.act{background:#6366f1;color:#fff;border-color:#6366f1;}
+.fbtn:hover:not(.act){background:#1e293b;color:#e2e8f0;}
+.tr:hover{background:rgba(99,102,241,.06);}
+select.s,input.s{background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:5px;padding:2px 5px;font-size:11px;}
+.ai{display:flex;align-items:flex-start;gap:9px;padding:8px 12px;border-radius:7px;margin-bottom:6px;}
+.air{background:rgba(239,68,68,.08);border-left:3px solid #ef4444}
+.aio{background:rgba(249,115,22,.08);border-left:3px solid #f97316}
+.pg-btn{background:#0f172a;border:1px solid #334155;border-radius:5px;padding:3px 10px;color:#94a3b8;font-size:11px;cursor:pointer;}
+.pg-btn:hover{background:#1e293b;color:#e2e8f0;}.pg-btn.cur{background:#6366f1;color:#fff;border-color:#6366f1;}
+
+/* ── MODAL ── */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;align-items:center;justify-content:center;}
+#overlay.open{display:flex;}
+#modal{background:#1e293b;border:1px solid #1e3a5f;border-radius:14px;padding:28px;width:min(600px,95vw);max-height:90vh;overflow-y:auto;position:relative;}
+.mfield{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;}
+.mfield label{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#64748b;font-weight:600;}
+.mfield input,.mfield select,.mfield textarea{background:#0f172a;border:1px solid #334155;border-radius:7px;padding:8px 12px;color:#e2e8f0;font-size:13px;width:100%;transition:border .2s;font-family:inherit;}
+.mfield input:focus,.mfield select:focus,.mfield textarea:focus{outline:none;border-color:#6366f1;}
+.mfield textarea{resize:vertical;min-height:70px;}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+.btn-save{background:linear-gradient(135deg,#3b82f6,#6366f1);border:none;border-radius:8px;padding:10px 24px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;transition:opacity .2s;}
+.btn-save:hover{opacity:.85;}
+.btn-cancel{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 20px;color:#94a3b8;font-size:13px;cursor:pointer;transition:all .2s;}
+.btn-cancel:hover{border-color:#6366f1;color:#e2e8f0;}
+.btn-del-c{background:rgba(239,68,68,.15);border:1px solid #ef4444;border-radius:8px;padding:10px 20px;color:#ef4444;font-size:13px;cursor:pointer;transition:all .2s;margin-right:auto;}
+.btn-del-c:hover{background:rgba(239,68,68,.3);}
+
+/* ── CONFIRM DIALOG ── */
+#confirm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1100;align-items:center;justify-content:center;}
+#confirm.open{display:flex;}
+#confirmBox{background:#1e293b;border:1px solid #7f1d1d;border-radius:12px;padding:24px 28px;width:min(400px,90vw);text-align:center;}
+
+/* Action buttons in table */
+.act-btn{background:transparent;border:1px solid #1e3a5f;border-radius:5px;padding:3px 8px;font-size:11px;cursor:pointer;transition:all .15s;}
+.act-edit{color:#3b82f6;}.act-edit:hover{background:#3b82f610;border-color:#3b82f6;}
+.act-del{color:#ef4444;}.act-del:hover{background:#ef444410;border-color:#ef4444;}
+
+/* Status badge pill */
+.spill{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600;}
+.sp-g{background:#22c55e15;color:#22c55e;border:1px solid #22c55e33;}
+.sp-r{background:#ef444415;color:#ef4444;border:1px solid #ef444433;}
+.sp-o{background:#f9731615;color:#f97316;border:1px solid #f9731633;}
+
+@media(max-width:900px){.hm{display:none!important;}}
+@media(max-width:600px){.kg{grid-template-columns:repeat(2,1fr)!important;}.cg{grid-template-columns:1fr!important;}.ag{grid-template-columns:1fr!important;}.mgrid{grid-template-columns:1fr!important;}}
+</style>
+</head>
+<body style="background:#060f1e;color:#e2e8f0;font-family:system-ui,sans-serif;min-height:100vh;margin:0;padding:0;">
+
+<!-- ══ MODAL ADD/EDIT ══ -->
+<div id="overlay" onclick="if(event.target===this)closeModal()">
+  <div id="modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div id="modal-badge" style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#64748b;margin-bottom:4px;font-weight:600;"></div>
+        <h2 id="modal-title" style="margin:0;font-size:18px;font-weight:800;color:#e2e8f0;"></h2>
+      </div>
+      <button onclick="closeModal()" style="background:transparent;border:none;color:#475569;font-size:22px;cursor:pointer;line-height:1;padding:4px;">✕</button>
+    </div>
+
+    <div class="mgrid">
+      <div class="mfield">
+        <label>Code UI</label>
+        <input id="f-code" type="text" placeholder="ex: 26000171"/>
+      </div>
+      <div class="mfield">
+        <label>Emplacement</label>
+        <input id="f-loc" type="text" placeholder="ex: Prétraitement"/>
+      </div>
+    </div>
+    <div class="mfield">
+      <label>Désignation Équipement</label>
+      <input id="f-name" type="text" placeholder="ex: Guillotine"/>
+    </div>
+    <div class="mgrid">
+      <div class="mfield">
+        <label>Marque / Constructeur</label>
+        <input id="f-brand" type="text" placeholder="ex: MANCINI"/>
+      </div>
+      <div class="mfield">
+        <label>État Machine</label>
+        <select id="f-status" onchange="onStatusChange()">
+          <option value="En marche">🟢 En marche</option>
+          <option value="À l'arrêt">🔴 À l'arrêt</option>
+          <option value="Problème">🟠 Problème</option>
+        </select>
+      </div>
+    </div>
+    <div class="mfield">
+      <label>Observation</label>
+      <textarea id="f-obs" placeholder="Décrire le problème, la panne, les actions en cours…"></textarea>
+    </div>
+    <div class="mgrid" id="date-row">
+      <div class="mfield">
+        <label>📅 Date d'Arrêt / Problème</label>
+        <input id="f-date" type="datetime-local"/>
+      </div>
+      <div class="mfield">
+        <label>⏱ Durée depuis incident</label>
+        <div id="f-duration" style="background:#0f172a;border:1px solid #334155;border-radius:7px;padding:8px 12px;color:#f97316;font-size:12px;font-weight:600;">–</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-top:20px;flex-wrap:wrap;">
+      <button id="btn-del-modal" class="btn-del-c" onclick="deleteFromModal()" style="display:none;">🗑 Supprimer</button>
+      <div style="flex:1;"></div>
+      <button class="btn-cancel" onclick="closeModal()">Annuler</button>
+      <button class="btn-save" onclick="saveModal()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFIRM DELETE ══ -->
+<div id="confirm">
+  <div id="confirmBox">
+    <div style="font-size:36px;margin-bottom:10px;">🗑️</div>
+    <h3 style="margin:0 0 8px;color:#ef4444;font-size:16px;">Supprimer cette machine ?</h3>
+    <p id="confirm-name" style="color:#94a3b8;font-size:13px;margin:0 0 20px;"></p>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button onclick="cancelDelete()" class="btn-cancel">Annuler</button>
+      <button onclick="confirmDelete()" style="background:#ef4444;border:none;border-radius:8px;padding:10px 20px;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HEADER ══ -->
+<header style="background:linear-gradient(135deg,#0f172a,#1e293b);border-bottom:1px solid #1e3a5f;padding:13px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+  <div style="display:flex;align-items:center;gap:13px;">
+    <div style="width:44px;height:44px;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚙️</div>
+    <div>
+      <div style="font-size:10px;letter-spacing:3px;color:#64748b;text-transform:uppercase;font-weight:600;">Ligne de Production Agroalimentaire</div>
+      <h1 style="margin:0;font-size:clamp(12px,2vw,16px);font-weight:800;color:#e2e8f0;">DASHBOARD – SUIVI DE L'ÉTAT DES MACHINES DE PRODUCTION</h1>
+    </div>
+  </div>
+  <div style="text-align:right;">
+    <div id="clock" style="font-size:22px;font-weight:800;color:#3b82f6;font-variant-numeric:tabular-nums;"></div>
+    <div id="dateline" style="font-size:11px;color:#64748b;"></div>
+  </div>
+</header>
+
+<main style="padding:18px 22px;max-width:1900px;margin:0 auto;">
+
+<!-- KPIs -->
+<div class="kg" style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px;">
+  <div style="background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #1e3a5f;border-radius:11px;padding:15px 16px;">
+    <div style="font-size:9px;letter-spacing:2px;color:#64748b;text-transform:uppercase;font-weight:600;margin-bottom:5px;">Total Machines</div>
+    <div id="k-tot" style="font-size:36px;font-weight:800;color:#e2e8f0;line-height:1.1;">0</div>
+    <div style="font-size:10px;color:#475569;margin-top:3px;">Parc complet</div>
+  </div>
+  <div style="background:linear-gradient(135deg,#052e16,#0f172a);border:1px solid #166534;border-radius:11px;padding:15px 16px;">
+    <div style="font-size:9px;letter-spacing:2px;color:#22c55e;text-transform:uppercase;font-weight:600;margin-bottom:5px;">En Marche</div>
+    <div id="k-run" style="font-size:36px;font-weight:800;color:#22c55e;line-height:1.1;">0</div>
+    <div style="font-size:10px;color:#166534;margin-top:3px;">Opérationnelles</div>
+  </div>
+  <div style="background:linear-gradient(135deg,#1f0a0a,#0f172a);border:1px solid #7f1d1d;border-radius:11px;padding:15px 16px;">
+    <div style="font-size:9px;letter-spacing:2px;color:#ef4444;text-transform:uppercase;font-weight:600;margin-bottom:5px;">À l'Arrêt</div>
+    <div id="k-stp" style="font-size:36px;font-weight:800;color:#ef4444;line-height:1.1;">0</div>
+    <div style="font-size:10px;color:#7f1d1d;margin-top:3px;">Machines arrêtées</div>
+  </div>
+  <div style="background:linear-gradient(135deg,#1a0e00,#0f172a);border:1px solid #7c3907;border-radius:11px;padding:15px 16px;">
+    <div style="font-size:9px;letter-spacing:2px;color:#f97316;text-transform:uppercase;font-weight:600;margin-bottom:5px;">Problème</div>
+    <div id="k-prb" style="font-size:36px;font-weight:800;color:#f97316;line-height:1.1;">0</div>
+    <div style="font-size:10px;color:#7c3907;margin-top:3px;">Défaut détecté</div>
+  </div>
+  <div style="background:linear-gradient(135deg,#0d1f3c,#0f172a);border:1px solid #1e3a5f;border-radius:11px;padding:15px 16px;">
+    <div style="font-size:9px;letter-spacing:2px;color:#3b82f6;text-transform:uppercase;font-weight:600;margin-bottom:5px;">Disponibilité</div>
+    <div id="k-rt" style="font-size:36px;font-weight:800;color:#3b82f6;line-height:1.1;">0%</div>
+    <div style="margin-top:5px;"><div style="background:#0f172a;border-radius:3px;height:4px;overflow:hidden;"><div id="k-bar" style="height:4px;border-radius:3px;width:0%;background:#3b82f6;transition:width .6s;"></div></div></div>
+  </div>
+</div>
+
+<!-- CHARTS -->
+<div class="cg" style="display:grid;grid-template-columns:1fr 2fr 1fr;gap:12px;margin-bottom:18px;">
+  <div style="background:#1e293b;border:1px solid #1e3a5f;border-radius:11px;padding:16px;">
+    <div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:12px;">📈 Répartition par État</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <canvas id="pieC" width="130" height="130"></canvas>
+      <div id="pieLeg" style="flex:1;min-width:80px;font-size:11px;"></div>
+    </div>
+  </div>
+  <div style="background:#1e293b;border:1px solid #1e3a5f;border-radius:11px;padding:16px;">
+    <div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:12px;">📊 Machines par Zone</div>
+    <canvas id="barC" width="460" height="155"></canvas>
+  </div>
+  <div style="background:#1e293b;border:1px solid #1e3a5f;border-radius:11px;padding:16px;text-align:center;">
+    <div style="font-size:11px;font-weight:700;color:#e2e8f0;margin-bottom:8px;">🎯 Disponibilité</div>
+    <div style="position:relative;display:inline-block;">
+      <canvas id="gaugeC" width="180" height="105"></canvas>
+      <div id="gLbl" style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);font-size:20px;font-weight:800;color:#3b82f6;white-space:nowrap;">0%</div>
+    </div>
+    <div id="gSt" style="font-size:11px;margin-top:4px;"></div>
+  </div>
+</div>
+
+<!-- ALERTS -->
+<div class="ag" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+  <div style="background:#1e293b;border:1px solid #7f1d1d;border-radius:11px;padding:16px;">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
+      <span>🛑</span><span style="font-size:11px;font-weight:700;color:#ef4444;letter-spacing:.5px;">MACHINES À L'ARRÊT</span>
+      <span id="bd-stp" class="badge br" style="margin-left:auto;">0</span>
+    </div>
+    <div id="al-stp" style="max-height:200px;overflow-y:auto;"></div>
+    <div id="al-stp-e" style="color:#475569;font-size:11px;text-align:center;padding:14px 0;">✅ Aucune machine à l'arrêt</div>
+  </div>
+  <div style="background:#1e293b;border:1px solid #7c3907;border-radius:11px;padding:16px;">
+    <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;">
+      <span>⚠️</span><span style="font-size:11px;font-weight:700;color:#f97316;letter-spacing:.5px;">MACHINES EN PROBLÈME</span>
+      <span id="bd-prb" class="badge bo" style="margin-left:auto;">0</span>
+    </div>
+    <div id="al-prb" style="max-height:200px;overflow-y:auto;"></div>
+    <div id="al-prb-e" style="color:#475569;font-size:11px;text-align:center;padding:14px 0;">✅ Aucun problème détecté</div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div style="background:#1e293b;border:1px solid #1e3a5f;border-radius:11px;padding:18px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+    <div style="font-size:11px;font-weight:700;color:#e2e8f0;letter-spacing:.5px;">📋 TABLEAU DÉTAILLÉ — <span id="tbl-title" style="color:#3b82f6;"></span></div>
+    <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;">
+      <input id="srch" type="text" placeholder="🔍 Rechercher…" class="s"
+        style="padding:5px 10px;width:150px;" oninput="applyFilters()"/>
+      <select id="zoneFilter" class="s" onchange="applyFilters()" style="padding:5px 7px;">
+        <option value="">🏭 Toutes zones</option>
+      </select>
+      <button class="fbtn act" onclick="setS('all',this)">Toutes</button>
+      <button class="fbtn" onclick="setS('En marche',this)"><span class="dot dot-g" style="margin-right:3px;"></span>En marche</button>
+      <button class="fbtn" onclick="setS('À l\'arrêt',this)"><span class="dot dot-r" style="margin-right:3px;"></span>Arrêt</button>
+      <button class="fbtn" onclick="setS('Problème',this)"><span class="dot dot-o" style="margin-right:3px;"></span>Problème</button>
+      <select id="pgSz" class="s" onchange="pgSize=+this.value;curPg=0;renderTable();" style="padding:5px 6px;">
+        <option value="25">25/page</option><option value="50">50/page</option>
+        <option value="100">100/page</option><option value="9999">Tout</option>
+      </select>
+      <!-- ADD BUTTON -->
+      <button onclick="openAdd()"
+        style="background:linear-gradient(135deg,#22c55e,#16a34a);border:none;border-radius:7px;
+               padding:6px 14px;color:#fff;font-weight:700;font-size:12px;cursor:pointer;
+               display:flex;align-items:center;gap:6px;transition:opacity .2s;"
+        onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+        ＋ Ajouter Machine
+      </button>
+    </div>
+  </div>
+
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:11px;">
+      <thead>
+        <tr style="background:#0f172a;color:#64748b;text-transform:uppercase;font-size:9px;letter-spacing:1px;">
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;" class="hm">Emplacement</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;cursor:pointer;" onclick="doSort('code')">Code UI ↕</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;cursor:pointer;" onclick="doSort('name')">Equipement ↕</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;" class="hm">Marque</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;">État</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;">Observation</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;" class="hm">📅 Date Arrêt/Problème</th>
+          <th style="padding:8px 9px;text-align:left;border-bottom:1px solid #1e3a5f;" class="hm">⏱ Durée</th>
+          <th style="padding:8px 9px;text-align:center;border-bottom:1px solid #1e3a5f;">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;flex-wrap:wrap;gap:8px;">
+    <span id="tbl-count" style="font-size:10px;color:#475569;"></span>
+    <div id="pagination" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+    <span style="font-size:10px;color:#334155;">✏️ Modifier · 🗑 Supprimer · Double-clic Obs. pour édition rapide</span>
+  </div>
+</div>
+
+<div style="text-align:center;margin-top:16px;font-size:9px;color:#1e3a5f;padding-bottom:10px;">
+  Dashboard Industriel · Agroalimentaire · <span id="total-count"></span> équipements
+</div>
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════
+const STS={"Em":"En marche","Ar":"À l'arrêt","Pb":"Problème"};
+const NOW_STR=()=>{const n=new Date();return n.getFullYear()+"-"+String(n.getMonth()+1).padStart(2,"0")+"-"+String(n.getDate()).padStart(2,"0")+"T"+String(n.getHours()).padStart(2,"0")+":"+String(n.getMinutes()).padStart(2,"0");};
+const FMT=(d)=>{if(!d)return"–";const dt=new Date(d);return dt.toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});};
+
+const RAW=[
+["26000171","Élévateur","MANCINI","stabulation","Em","",""],
+["26000172","Séparateur","MANCINI","stabulation","Em","",""],
+["26000173","Pompe de nettoyage","M.gb.","stabulation","Em","",""],
+["26000174","Abreuvoire 1","","Enclos 01 bovin","Em","",""],
+["26000175","Abreuvoire 2","","Enclos 02 bovin","Ar","","2026-10-28T06:00"],
+["26000176","Abreuvoire 3","","Enclos 03 bovin","Pb","PROBLEM","2026-10-28T10:00"],
+["26000177","Abreuvoire 4","","Enclos 03 bovin","Em","",""],
+["26000178","Abreuvoire 5","","Enclos 04 bovin","Em","",""],
+["26000179","Abreuvoire 6","","Enclos 04 bovin","Em","",""],
+["26000180","Abreuvoire 7","","Enclos 05 bovin","Em","",""],
+["26000181","Abreuvoire 8","","Enclos 05 bovin","Em","",""],
+["26000182","Abreuvoire 9","","Enclos 05 bovin","Ar","","2026-10-28T07:30"],
+["26000183","Abreuvoire 10","","Enclos 05 bovin","Em","",""],
+["26000184","Abreuvoire 11","","Enclos 06 bovin","Em","",""],
+["26000185","Abreuvoire 12","","Enclos 06 bovin","Ar","","2026-10-28T08:00"],
+["26000186","Abreuvoire 13","","Enclos 06 bovin","Ar","","2026-10-28T08:00"],
+["26000187","Abreuvoire 14","","Enclos 06 bovin","Em","",""],
+["26000188","Abreuvoire 15","","Enclos 07 bovin","Em","",""],
+["26000189","Abreuvoire 16","","Enclos 07 bovin","Em","",""],
+["26000190","Abreuvoire 17","","Enclos 08 bovin","Em","",""],
+["26000191","Abreuvoire 18","","Enclos 08 bovin","Em","",""],
+["26000192","Abreuvoire 19","","Enclos 08 bovin","Ar","","2026-10-28T09:00"],
+["26000193","Abreuvoire 20","","Enclos 08 bovin","Em","",""],
+["26000194","Abreuvoire 21","","Enclos 09 bovin","Em","",""],
+["26000195","Abreuvoire 22","","Enclos 09 bovin","Em","",""],
+["26000196","Abreuvoire 23","","Enclos 10 bovin","Ar","","2026-10-28T07:00"],
+["26000197","Abreuvoire 24","","Enclos 10 bovin","Em","",""],
+["26000198","Abreuvoire 25","","Enclos 10 bovin","Em","",""],
+["26000199","Abreuvoire 26","","Enclos 01 ovin","Em","",""],
+["26000200","Abreuvoire 27","","Enclos 02 ovin","Em","",""],
+["26000201","Abreuvoire 28","","Enclos 03 ovin","Em","",""],
+["26000202","Abreuvoire 28","","Enclos 04 ovin","Em","",""],
+["26000203","Abreuvoire 29","","Enclos 05 ovin","Em","",""],
+["26000204","Abreuvoire 30","","Enclos 06 ovin","Ar","","2026-10-28T09:30"],
+["26000205","Abreuvoire 31","","Enclos 07 ovin","Em","",""],
+["26000206","Abreuvoire 32","","Enclos 08 ovin","Em","",""],
+["26000207","Abreuvoire 32","","Enclos 09 ovin","Em","",""],
+["26000163","Nettoyage semelles & désinfection mains","ELPRESS","sas d'entrée","Em","",""],
+["26000164","Nettoyage de bottes","ELPRESS","sas d'entrée","Em","",""],
+["30101002","palan circuit d'urgence","KITO CORR","zone d'urgence","Ar","","2026-10-28T06:50"],
+["26000138","palan circuit d'urgence (secours)","","zone d'urgence","Em","",""],
+["26000135","Laveuse d'ustensiles","ELPRESS","zone d'urgence","Em","",""],
+["12409002","monorail de saignée","MANCINI","égorgement","Ar","","2026-10-28T06:00"],
+["12409014","Chaîne électrique retour crochets","MANCINI","égorgement","Em","",""],
+["26000170","box rituel","MANCINI","égorgement","Em","",""],
+["30101001","palan de box","R.W.M","égorgement","Em","",""],
+["08112111","palan de box (secours)","R.W.M","égorgement","Em","",""],
+["18501001","stérilisateur N°1","MANCINI","égouttage","Em","",""],
+["11001111","Pompe d'évacuation sang","CAFFINI","égouttage","Em","",""],
+["30201001","cisaille coupe pattes avant","Jarvis","égouttage","Em","",""],
+["18501002","stérilisateur cisaille","MANCINI","égouttage","Em","",""],
+["30101003","palan de transfert bovin","R.W.M","Dépuoillement 1er patte arrière","Em","",""],
+["12409011","Convoyeur de transfert bovin","MANCINI","Dépuoillement 1er patte arrière","Em","",""],
+["26000210","Descenseur pneumatique","","Dépuoillement 1er patte arrière","Em","",""],
+["26000211","Arrêt pneumatique","","Dépuoillement 1er patte arrière","Em","",""],
+["081121211","plate forme 1","MANCINI","Dépuoillement 1er patte arrière","Em","",""],
+["26000036","perco / dépouilleur","TURBO III","Dépuoillement 1er patte arrière","Em","",""],
+["26000060","perco / dépouilleur","TURBO III","Dépuoillement 1er patte arrière","Em","",""],
+["30201002","cisaille coupe pattes arrière","Jarvis","Dépuoillement 1er patte arrière","Em","",""],
+["18501004","stérilisateur de couteau","MANCINI","Dépuoillement 1er patte arrière","Em","",""],
+["18501005","stérilisateur cisaille","MANCINI","Dépuoillement 1er patte arrière","Em","",""],
+["081121212","plate forme 2","MANCINI","Dépuoillement 2ème patte arrière","Em","",""],
+["26000061","perco / dépouilleur","TURBO III","Dépuoillement 2ème patte arrière","Em","",""],
+["26000037","perco / dépouilleur","TURBO III","Dépuoillement 2ème patte arrière","Em","",""],
+["18501016","stérilisateur de couteau","MANCINI","Dépuoillement 2ème patte arrière","Em","",""],
+["12405002","Élévateur poulie","MANCINI","Dépuoillement 2ème patte arrière","Em","",""],
+["081121123","Chaîne aérienne transfert bovin","MANCINI","Dépuoillement des flancs","Em","",""],
+["26000212","Dispositif introduction poulies sur chaîne","MANCINI","Dépuoillement des flancs","Em","",""],
+["081121121","perco / dépouilleur","TURBO III","Dépuoillement des flancs","Em","",""],
+["081121122","perco / dépouilleur","TURBO III","Dépuoillement des flancs","Em","",""],
+["081121213","plate forme 3","MANCINI","arrache cuir","Em","",""],
+["18501007","stérilisateur de couteau","MANCINI","arrache cuir","Em","",""],
+["26000141","Arracheur de cuir","MANCINI","arrache cuir","Em","",""],
+["26000062","Électrostimulateur","MANCINI","arrache cuir","Em","",""],
+["081121214","plate forme 4","MANCINI","arrache cuir","Em","",""],
+["18501008","stérilisateur de couteau","MANCINI","arrache cuir","Em","",""],
+["081121215","plate forme 5","MANCINI","Fente sternum","Em","",""],
+["26100007","scie sternum","Jarvis","Fente sternum","Em","",""],
+["26000213","scie sternum","Jarvis","Fente sternum","Em","",""],
+["18501031","stérilisateur de scie sternum","MANCINI","Fente sternum","Em","",""],
+["18501030","stérilisateur de couteau","MANCINI","Fente sternum","Em","",""],
+["081121311","plate forme 6","MANCINI","éviscération abdominale","Em","",""],
+["18501009","stérilisateur de couteau","MANCINI","éviscération abdominale","Em","",""],
+["26000214","Écarteur pneumatique","","éviscération abdominale","Em","",""],
+["081121321","plate forme 7","MANCINI","éviscération thoracique","Em","",""],
+["18501010","stérilisateur de couteau","MANCINI","éviscération thoracique","Em","",""],
+["081121161","plate forme 8","MANCINI","Fente à demi carcasse","Em","",""],
+["26100003","scie fente à demi","JARVIS","Fente à demi carcasse","Em","",""],
+["26000215","scie fente à demi","JARVIS","Fente à demi carcasse","Em","",""],
+["18501012","stérilisateur de scie","MANCINI","Fente à demi carcasse","Em","",""],
+["18501032","stérilisateur de couteau","MANCINI","Fente à demi carcasse","Em","",""],
+["26000063","écarteur demi carcasse","MANCINI","Fente à demi carcasse","Em","",""],
+["26000216","Arrêt pneumatique","","Fente à demi carcasse","Em","",""],
+["26000140","Douchette bovin","MANCINI","Traitement superficiel & insp. sanitaire","Em","",""],
+["081121181","Plate forme de visite sanitaire","","Traitement superficiel & insp. sanitaire","Em","",""],
+["11602833","bac","","Traitement superficiel & insp. sanitaire","Em","",""],
+["11010390","Pompe de douchette","","Traitement superficiel & insp. sanitaire","Em","",""],
+["18501013","Stérilisateur","","Traitement superficiel & insp. sanitaire","Em","",""],
+["10800028","Balance aérienne","","Pesé fiscale","Em","",""],
+["","Balance aérienne","","Pesé fiscale","Em","",""],
+["26000217","Balance","","Pesé fiscale","Em","",""],
+["11001112","Pompe d'évacuation sang","MANCINI","Égorgement","Em","",""],
+["12409003","Convoyeur aérien de saignée","MANCINI","Égorgement","Em","",""],
+["23101001","Table de saignée","","Égorgement","Em","",""],
+["12409012","Convoyeur de transfert aérien","","Dépouillement","Em","",""],
+["08112221","plate forme de transfert","","Dépouillement","Em","",""],
+["26000218","Gonfleur","","Dépouillement","Em","",""],
+["18501014","Stérilisateur couteau","MANCINI","Dépouillement","Em","",""],
+["08112222","plate forme de pré-dépouille","","Dépouillement","Em","",""],
+["18501015","Stérilisateur","MANCINI","Dépouillement","Em","",""],
+["26000219","Stérilisateur","MANCINI","Dépouillement","Em","",""],
+["08112223","plate forme de dépouille","","Dépouillement","Em","",""],
+["26000220","Bistouri rotatif","MANCINI","Dépouillement","Em","",""],
+["26000221","Bistouri rotatif","MANCINI","Dépouillement","Em","",""],
+["26000222","Tire-CRAVATE","MANCINI","Dépouillement","Em","",""],
+["26000223","Stérilisateur","MANCINI","Dépouillement","Em","",""],
+["26000224","Stérilisateur","MANCINI","Dépouillement","Em","",""],
+["26000225","Stérilisateur","MANCINI","Dépouillement","Em","",""],
+["08112232","Chaîne de transformation","","Éviscération","Em","",""],
+["08112231","Plate forme d'éviscération","","Éviscération","Em","",""],
+["18501017","Stérilisateur","MANCINI","Éviscération","Em","",""],
+["26000226","Stérilisateur","MANCINI","Éviscération","Em","",""],
+["26000227","Stérilisateur","MANCINI","Éviscération","Em","",""],
+["10800029","Balance aérienne","","Pesé fiscale","Em","",""],
+["26000228","Balance aérienne","","Pesé fiscale","Em","",""],
+["26000229","Balance plate-forme","","Salle pesée cuire","Em","",""],
+["26000230","Centrifugeuse","MANCINI","Salle traitement de la graisse","Em","",""],
+["11502001","Convoyeur pneumatique séparateur déchets","MANCINI","traitement triperie sale","Em","",""],
+["","Centrifugeuse","MANCINI","traitement triperie sale","Em","",""],
+["","Centrifugeuse","MANCINI","traitement triperie sale","Em","",""],
+["26000231","Casse tête","MANCINI","traitement triperie propre","Em","",""],
+["26000232","Centrifugeuse","","salle traitement des pattes","Em","",""],
+["26000233","Scie","Jarvis","Préparation et mise en cartier","Em","",""],
+["26000234","Scie","EFA","Préparation et mise en cartier","Em","",""],
+["26000235","Scie","EFA","Préparation et mise en cartier","Em","",""],
+["26000236","Scie","EFA","Préparation et mise en cartier","Em","",""],
+["12409006","Bi-rail de transfert","","Préparation et mise en cartier","Em","",""],
+["12409007","chaîne de la machine Noira","MANCINI","Préparation et mise en cartier","Em","",""],
+["30301001","BRAS DE CHARGEMENT A COLONNE","MANCINI","Salle de Livraison","Em","",""],
+["30301002","BRAS DE CHARGEMENT A COLONNE","MANCINI","Salle de Livraison","Em","",""],
+["10700022","Quai","","Salle de Livraison","Em","",""],
+["10700023","Quai","","Salle de Livraison","Em","",""],
+["10700024","Quai","","Salle de Livraison","Em","",""],
+["26000165","Nettoyage semelles & désinfection mains","ELPRESS","sas d'entrée","Em","",""],
+["26000166","Nettoyage de bottes","ELPRESS","sas d'entrée","Em","",""],
+["26000237","Laveuse d'ustensiles","ELPRESS","sas d'entrée","Em","",""],
+["26000238","Affuteuse","","sas d'entrée","Em","",""],
+["26000066","Birail","","Salle de Désossage","Em","",""],
+["26000003","Acrocheuse / Désosseuse","MANCINI","Salle de Désossage","Em","",""],
+["12409008","Convoyeur Désosseuse","MANCINI","Salle de Désossage","Em","",""],
+["23102001","Table rotative","","Salle de Désossage","Em","",""],
+["18501019","Stérilisateur","MANCINI","Salle de Désossage","Em","",""],
+["18501020","Stérilisateur","MANCINI","Salle de Désossage","Em","",""],
+["26000143","Scie à os","Savioli Lelio","Salle de Désossage","Em","",""],
+["26100005","Scie à os","Savioli Lelio","Salle de Découpe","Em","",""],
+["26100001","Scie à os","Kolbe","Salle de Découpe","Em","",""],
+["2600003","Scie à os","Kolbe","Salle de Découpe","Em","",""],
+["26000004","Scie à os","Kolbe","Salle de Découpe","Em","",""],
+["26000001","Eplucheuse","Varlet","Salle de Découpe","Em","",""],
+["26000050","Eplucheuse","Varlet","Salle de Découpe","Em","",""],
+["26000005","sous vide 2","Henkelman","Salle de conditionnement (Découpe)","Em","",""],
+["26000239","Sous vide","VC999","Salle de conditionnement (Découpe)","Em","",""],
+["26000076","Lave-Caisse","Nowicki","","Em","",""],
+["26000014","Hachoire","KOLBE","Élaboration viande","Em","",""],
+["26000023","Mélangeur","Asgo","Élaboration viande","Em","",""],
+["26000047","Poussoir","REX","Élaboration viande","Em","",""],
+["26000048","Poussoir","LA FELSINEA","Élaboration viande","Em","",""],
+["26000049","Poussoir","Groupe PSV","Élaboration viande","Em","",""],
+["26000157","Mélangeur","Groupe PSV","Élaboration viande","Em","",""],
+["26000158","Hachoire","MEAT GRINDER","Élaboration viande","Em","",""],
+["26000159","Hachoire","","Élaboration viande","Em","",""],
+["26000044","Formeuse","ALCO","Élaboration viande","Em","",""],
+["12409010","Élevateur Formeuse","Asgo","Élaboration viande","Em","",""],
+["26000160","Portionneur à viande hachée","KOLBE","Élaboration viande","Em","",""],
+["26000161","Friteuse","Valenzo","Élaboration viande","Em","",""],
+["26000045","Machine à boulette","ALCO","Élaboration viande","Em","",""],
+["26000091","Tunnel de congélation","Frigoimpianti","Élaboration viande","Em","",""],
+["26000162","Table rotative","Mancini","Élaboration viande","Em","",""],
+["12409017","Convoyeur entrée de tunnel","","Élaboration viande","Em","",""],
+["12409019","Convoyeur sortie de tunnel","Beenfiglioli","Élaboration viande","Em","",""],
+["26000004","sous vide 1","Henkelman","Salle de conditionnement","Em","",""],
+["26000011","Enveloppeuse","Ulma","Salle de conditionnement","Em","",""],
+["","Operculeuse","Ulma","Salle de conditionnement","Em","",""],
+["26000092","Guillotine","Magurit","Prétraitement","Em","",""],
+["26000240","Guillotine","RISCO","Prétraitement","Em","",""],
+["26000022","Hachoire","Nowicki","Prétraitement","Em","",""],
+["26000079","Machine à glace","ITV Ice Makers","Prétraitement","Em","",""],
+["","Machine à glace","","Prétraitement","Em","",""],
+["26000026","Lave main","","Prétraitement","Em","",""],
+["26000241","Hachoire","RISCO","Prétraitement","Em","",""],
+["26000024","Baratte","Nowicki","Prétraitement","Em","",""],
+["26000242","Baratte","","Prétraitement","Em","",""],
+["26000243","Baratte","SST","Prétraitement","Em","",""],
+["26000007","Injecteuse","Nowicki","Prétraitement","Em","",""],
+["26000244","Mélangeur","SIA/LMIA","Prétraitement","Em","",""],
+["26000245","Élévateur","SIA/LMIA","Prétraitement","Em","",""],
+["26000034","Poussoir","REX","Prétraitement","Em","",""],
+["26000246","Lave main","","Prétraitement","Em","",""],
+["26000055","Cutter","Groupe PSV","Prétraitement","Em","",""],
+["26000027","Cutter","Alpina","Prétraitement","Em","",""],
+["26000054","Cutter","GEA","Prétraitement","Em","",""],
+["26000247","Cutter","TIPPER TIE","Prétraitement","Em","",""],
+["","Cutter","SEYDELMANN","Prétraitement","Em","",""],
+["26000028","Affineur","TIPPER TIE","Prétraitement","Em","",""],
+["26000056","Affineur","Karl schnell","Prétraitement","Em","",""],
+["26000169","Affineur","Karl schnell","Prétraitement","Em","",""],
+["26000144","Poussoir VF300","Handtmann","Prétraitement","Em","",""],
+["26000145","Élévateur","","Prétraitement","Em","",""],
+["26000146","Poussoir VF 200 B","Handtmann","Prétraitement","Em","",""],
+["26000147","Élévateur","","Prétraitement","Em","",""],
+["26000148","Poussoir VF 200 B","Handtmann","Prétraitement","Em","",""],
+["26000149","Élévateur","","Prétraitement","Em","",""],
+["26000032","Poussoir REX","REX","Prétraitement","Em","",""],
+["26000248","Poussoir VF200 B","Handtmann","Prétraitement","Em","",""],
+["26000249","Élévateur","","Prétraitement","Em","",""],
+["26000250","Poussoir VF 620","Handtmann","Prétraitement","Em","",""],
+["26000251","Élévateur","","Prétraitement","Em","",""],
+["26000252","Poussoir RS","RISCO","Prétraitement","Em","",""],
+["26000253","Poussoir RS","RISCO","Prétraitement","Em","",""],
+["26000254","Poussoir RS","RISCO","Prétraitement","Em","",""],
+["26000254","Poussoir HANDMAN","HANDMAN","Prétraitement","Em","",""],
+["26000081","Balance","","Prétraitement","Em","",""],
+["26000082","Balance","","Prétraitement","Em","",""],
+["26000255","Balance","","Prétraitement","Em","",""],
+["26000033","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000056","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000035","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000151","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000150","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000152","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000256","Clipeuse","Alpina","Prétraitement","Em","",""],
+["26000257","Clipeuse","Alpina","Prétraitement","Em","",""],
+["","Clipeuse","International clip","Prétraitement","Em","",""],
+["","Clipeuse","Alpina","Prétraitement","Em","",""],
+["","Clipeuse","","Prétraitement","Em","",""],
+["26000029","Sertisseuse","SOMME","Prétraitement","Em","",""],
+["26000084","Table rotative","Coudert","Prétraitement","Em","",""],
+["26000276","Sertisseuse","DS","Prétraitement","Em","",""],
+["26000083","Lave-main","","Prétraitement","Em","",""],
+["26000258","Lave-main","","Prétraitement","Em","",""],
+["26000259","Lave-main","","Prétraitement","Em","",""],
+["26000260","Lave-main","","Prétraitement","Em","",""],
+["60000006","Autoclave","Lagarde","salle de cuisson","Em","",""],
+["60000007","Autoclave","Lagarde","salle de cuisson","Em","",""],
+["60000002","Autoclave","Profinox","salle de cuisson","Em","",""],
+["60000003","Autoclave","Profinox","salle de cuisson","Em","",""],
+["60000001","Autoclave","Profinox","salle de cuisson","Em","",""],
+["60000004","Autoclave","Profinox","salle de cuisson","Em","",""],
+["","Autoclave","Lagarde","salle de cuisson","Em","",""],
+["26000058","Four","fessmann","salle de cuisson","Em","",""],
+["26000038","Four","KERRES","salle de cuisson","Em","",""],
+["26000261","Lave main","","Prétraitement","Em","",""],
+["26000153","Trancheuse","TREIF","Salle blanche","Em","",""],
+["","Trancheuse","SARL EQUIPRO","Salle blanche","Em","",""],
+["","Trancheuse","PSV","Salle blanche","Em","",""],
+["26000010","Thermoformeuse","Multivac","Salle blanche","Em","",""],
+["12409009","Convoyeur thermoformeuse","","Salle blanche","Em","",""],
+["26000262","Thermoformeuse","Multivac","Salle blanche","Em","",""],
+["26000009","Tank de rétraction","Henkelman","Salle blanche","Em","",""],
+["26000263","Operculeuse","Multivac","Salle blanche","Em","",""],
+["","Sous vide","PSV","Salle blanche","Em","",""],
+["26000264","Lave main","","Salle blanche","Em","",""],
+["26000265","Balance","","Salle blanche","Em","",""],
+["","Dateur","MARKEM-IMAJE","salle de conditionnement","Em","",""],
+["26000266","Dateur","VIDEOJET","salle de conditionnement","Em","",""],
+["26000267","Dateur","VIDEOJET","salle de conditionnement","Em","",""],
+["","Convoyeur","","salle de conditionnement","Em","",""],
+["26000268","Convoyeur","","salle de conditionnement","Em","",""],
+["","Fardeleuse","SMIPACK","salle de conditionnement","Em","",""],
+["26000269","Fardeleuse","BELCA","salle de conditionnement","Em","",""],
+["","Fardeleuse","ZORPACK","salle de conditionnement","Em","",""],
+["","ÉTIQUETEUSE","KETAN","salle de conditionnement","Em","",""],
+["26000271","Lave main","","salle de conditionnement","Em","",""],
+["26000272","Balance plate-forme","","Zone de pesage","Em","",""],
+["26000273","Quai","","Salle de Livraison","Em","",""],
+["26000274","Quai","","Salle de Livraison","Em","",""],
+["26000275","Quai","","Salle de Livraison","Em","",""],
+["","Tapis transporteur","REX","hors service","Ar","hors service","2026-10-01T08:00"],
+["","Machine à boulette","REX","hors service","Ar","hors service","2026-10-01T08:00"],
+["","Machine à brochette","VN srl","hors service","Ar","hors service","2026-10-01T08:00"],
+["","Cubeuse","TREIF","hors service","Ar","hors service","2026-10-01T08:00"],
+["","ÉTIQUETEUSE","Multivac","salle de conditionnement","Em","",""]
+];
+
+let MACHINES=RAW.map((r,i)=>({id:i,code:r[0],name:r[1],brand:r[2],loc:r[3],status:STS[r[4]]||r[4],obs:r[5],dateInc:r[6]||""}));
+let nextId=MACHINES.length;
+
+// Zone
+function zone(loc){
+  const l=(loc||"").toLowerCase().trim();
+  if(!l)return"Non défini";
+  if(l.includes("stabulation")||l.includes("enclos"))return"Stabulation/Enclos";
+  if(l.includes("sas"))return"SAS/Entrée";
+  if(l.includes("urgence"))return"Zone Urgence";
+  if(l.includes("égorgement")||l.includes("egorgement"))return"Égorgement";
+  if(l.includes("égouttage"))return"Égouttage";
+  if(l.includes("dépuoillement")||l.includes("dépouillement")||l.includes("arrache cuir"))return"Dépouillement";
+  if(l.includes("fente sternum")||l.includes("fente à demi"))return"Fente carcasse";
+  if(l.includes("éviscér"))return"Éviscération";
+  if(l.includes("traitement superficiel")||l.includes("insp. sanitaire"))return"Insp. Sanitaire";
+  if(l.includes("pesé fiscale")||l.includes("zone de pesage")||l.includes("salle pesée")||l.includes("pesée cuire"))return"Pesage/Balance";
+  if(l.includes("graisse")||l.includes("triperie")||l.includes("pattes"))return"Triperie/Graisse";
+  if(l.includes("cartier"))return"Mise en Cartier";
+  if(l.includes("livraison"))return"Livraison";
+  if(l.includes("désossage"))return"Désossage";
+  if(l.includes("découpe"))return"Découpe";
+  if(l.includes("élaboration"))return"Élab. Viande";
+  if(l.includes("prétraitement"))return"Prétraitement";
+  if(l.includes("cuisson"))return"Cuisson";
+  if(l.includes("blanche"))return"Salle Blanche";
+  if(l.includes("conditionnement"))return"Conditionnement";
+  if(l.includes("hors service"))return"Hors Service";
+  return"Autre";
+}
+
+// Duration since incident
+function duration(dateStr){
+  if(!dateStr)return"–";
+  const diff=Date.now()-new Date(dateStr).getTime();
+  if(isNaN(diff)||diff<0)return"–";
+  const h=Math.floor(diff/3600000),m=Math.floor((diff%3600000)/60000);
+  if(h>24){const d=Math.floor(h/24);return`${d}j ${h%24}h`;}
+  return`${h}h ${m}m`;
+}
+
+// State
+let curFilt="all",curZone="",sortF=null,sortA=true,curPg=0,pgSize=25;
+let filtered=[];
+let editIdx=null, delIdx=null;
+
+// Clock
+function tick(){
+  const n=new Date(),p=v=>String(v).padStart(2,"0");
+  document.getElementById("clock").textContent=`${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  const j=["Dimanche","Lundi","Mardi","Mercredi","Jeudi","Vendredi","Samedi"];
+  const mo=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  document.getElementById("dateline").textContent=`${j[n.getDay()]} ${n.getDate()} ${mo[n.getMonth()]} ${n.getFullYear()}`;
+}
+setInterval(tick,1000);tick();
+
+// KPIs
+function kpis(){
+  const tot=MACHINES.length,run=MACHINES.filter(m=>m.status==="En marche").length,
+        stp=MACHINES.filter(m=>m.status==="À l'arrêt").length,
+        prb=MACHINES.filter(m=>m.status==="Problème").length,
+        rt=tot?Math.round((run/tot)*100):0;
+  document.getElementById("k-tot").textContent=tot;
+  document.getElementById("k-run").textContent=run;
+  document.getElementById("k-stp").textContent=stp;
+  document.getElementById("k-prb").textContent=prb;
+  document.getElementById("k-rt").textContent=rt+"%";
+  const b=document.getElementById("k-bar");
+  b.style.width=rt+"%";b.style.background=rt>=80?"#22c55e":rt>=60?"#f97316":"#ef4444";
+  document.getElementById("bd-stp").textContent=stp;
+  document.getElementById("bd-prb").textContent=prb;
+  document.getElementById("total-count").textContent=tot;
+  return{tot,run,stp,prb,rt};
+}
+
+// Pie
+function drawPie(){
+  const c=document.getElementById("pieC"),ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  const{run,stp,prb,tot}=kpis();
+  const sl=[{l:"En marche",v:run,col:"#22c55e"},{l:"À l'arrêt",v:stp,col:"#ef4444"},{l:"Problème",v:prb,col:"#f97316"}].filter(s=>s.v>0);
+  const cx=c.width/2,cy=c.height/2,r=Math.min(cx,cy)-5;
+  let st=-Math.PI/2;
+  sl.forEach(s=>{const a=(s.v/tot)*2*Math.PI;ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,st,st+a);ctx.closePath();ctx.fillStyle=s.col;ctx.fill();ctx.strokeStyle="#1e293b";ctx.lineWidth=2;ctx.stroke();st+=a;});
+  ctx.beginPath();ctx.arc(cx,cy,r*.5,0,2*Math.PI);ctx.fillStyle="#1e293b";ctx.fill();
+  ctx.fillStyle="#e2e8f0";ctx.font="bold 16px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(tot,cx,cy-3);
+  ctx.font="9px system-ui";ctx.fillStyle="#64748b";ctx.fillText("machines",cx,cy+11);
+  document.getElementById("pieLeg").innerHTML=sl.map(s=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="width:10px;height:10px;border-radius:2px;background:${s.col};flex-shrink:0;display:inline-block;"></span><span style="color:#94a3b8;font-size:10px;">${s.l}</span><span style="color:#e2e8f0;font-weight:700;margin-left:auto;font-size:11px;">${s.v}</span><span style="color:#475569;font-size:9px;">${Math.round((s.v/tot)*100)}%</span></div>`).join("");
+}
+
+// Bar
+function drawBar(){
+  const c=document.getElementById("barC"),ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  const zones={};
+  MACHINES.forEach(m=>{const z=zone(m.loc);zones[z]=(zones[z]||0)+1;});
+  const sorted=Object.entries(zones).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const labels=sorted.map(e=>e[0]),values=sorted.map(e=>e[1]);
+  if(!values.length)return;
+  const maxV=Math.max(...values);
+  const pL=4,pR=4,pT=18,pB=48,cW=c.width-pL-pR,cH=c.height-pT-pB;
+  const bW=Math.max(8,Math.floor(cW/labels.length)-4);
+  const cols=["#3b82f6","#6366f1","#8b5cf6","#22c55e","#f97316","#ec4899","#14b8a6","#f59e0b","#ef4444","#a855f7","#06b6d4","#84cc16","#fb923c","#34d399","#818cf8"];
+  labels.forEach((lab,i)=>{
+    const bH=Math.max(3,Math.round((values[i]/maxV)*cH));
+    const x=pL+i*(cW/labels.length)+2,y=pT+cH-bH;
+    const g=ctx.createLinearGradient(x,y,x,y+bH);
+    g.addColorStop(0,cols[i%cols.length]);g.addColorStop(1,cols[i%cols.length]+"33");
+    ctx.fillStyle=g;
+    if(ctx.roundRect)ctx.roundRect(x,y,bW,bH,3);else ctx.rect(x,y,bW,bH);
+    ctx.fill();
+    ctx.fillStyle="#e2e8f0";ctx.font="bold 9px system-ui";ctx.textAlign="center";ctx.fillText(values[i],x+bW/2,y-4);
+    ctx.save();ctx.translate(x+bW/2,pT+cH+8);ctx.rotate(-Math.PI/3.5);
+    ctx.fillStyle="#64748b";ctx.font="8px system-ui";ctx.textAlign="right";
+    ctx.fillText(lab.length>14?lab.slice(0,13)+"…":lab,0,0);ctx.restore();
+  });
+}
+
+// Gauge
+function drawGauge(){
+  const c=document.getElementById("gaugeC"),ctx=c.getContext("2d");
+  ctx.clearRect(0,0,c.width,c.height);
+  const{rt}=kpis();
+  const cx=c.width/2,cy=c.height-8,r=Math.min(cx,cy)-7;
+  ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,0);ctx.lineWidth=13;ctx.strokeStyle="#0f172a";ctx.stroke();
+  [[0,.33,"#ef4444"],[.33,.66,"#f97316"],[.66,1,"#22c55e"]].forEach(([s,e,col])=>{ctx.beginPath();ctx.arc(cx,cy,r,Math.PI*(1+s),Math.PI*(1+e));ctx.lineWidth=11;ctx.strokeStyle=col+"44";ctx.stroke();});
+  const pct=rt/100,vc=rt>=80?"#22c55e":rt>=60?"#f97316":"#ef4444";
+  ctx.beginPath();ctx.arc(cx,cy,r,Math.PI,Math.PI+Math.PI*pct);ctx.lineWidth=11;ctx.strokeStyle=vc;ctx.lineCap="round";ctx.stroke();
+  const ang=Math.PI+Math.PI*pct,nx=cx+(r-5)*Math.cos(ang),ny=cy+(r-5)*Math.sin(ang);
+  ctx.beginPath();ctx.arc(nx,ny,4,0,2*Math.PI);ctx.fillStyle=vc;ctx.fill();
+  ctx.beginPath();ctx.arc(cx,cy,5,0,2*Math.PI);ctx.fillStyle="#e2e8f0";ctx.fill();
+  document.getElementById("gLbl").textContent=rt+"%";document.getElementById("gLbl").style.color=vc;
+  const gs=document.getElementById("gSt");
+  if(rt>=80){gs.textContent="✅ Excellent";gs.style.color="#22c55e";}else if(rt>=60){gs.textContent="⚠️ Attention";gs.style.color="#f97316";}else{gs.textContent="🚨 Critique";gs.style.color="#ef4444";}
+}
+
+// Alerts
+function renderAlerts(){
+  const stpd=MACHINES.filter(m=>m.status==="À l'arrêt"),prbd=MACHINES.filter(m=>m.status==="Problème");
+  document.getElementById("al-stp").innerHTML=stpd.map(m=>`
+    <div class="ai air" style="cursor:pointer;" onclick="openEdit(${m.id})">
+      <span class="dot dot-r" style="margin-top:2px;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:#ef4444;font-size:11px;">${m.code||"–"} · ${m.name}</div>
+        <div style="font-size:10px;color:#64748b;">${m.loc||"–"}${m.brand?" · "+m.brand:""}</div>
+        ${m.obs?`<div style="font-size:10px;color:#fca5a5;">💬 ${m.obs}</div>`:""}
+        ${m.dateInc?`<div style="font-size:9px;color:#7f1d1d;">📅 ${FMT(m.dateInc)} · ⏱ ${duration(m.dateInc)}</div>`:""}
+      </div>
+      <span style="font-size:9px;color:#334155;">✏️</span>
+    </div>`).join("");
+  document.getElementById("al-stp-e").style.display=stpd.length?"none":"block";
+  document.getElementById("al-prb").innerHTML=prbd.map(m=>`
+    <div class="ai aio" style="cursor:pointer;" onclick="openEdit(${m.id})">
+      <span class="dot dot-o" style="margin-top:2px;"></span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;color:#f97316;font-size:11px;">${m.code||"–"} · ${m.name}</div>
+        <div style="font-size:10px;color:#64748b;">${m.loc||"–"}${m.brand?" · "+m.brand:""}</div>
+        ${m.obs?`<div style="font-size:10px;color:#fdba74;">💬 ${m.obs}</div>`:""}
+        ${m.dateInc?`<div style="font-size:9px;color:#7c3907;">📅 ${FMT(m.dateInc)} · ⏱ ${duration(m.dateInc)}</div>`:""}
+      </div>
+      <span style="font-size:9px;color:#334155;">✏️</span>
+    </div>`).join("");
+  document.getElementById("al-prb-e").style.display=prbd.length?"none":"block";
+}
+
+// Zone select populate
+function populateZones(){
+  const zs=new Set(MACHINES.map(m=>zone(m.loc)));
+  const sel=document.getElementById("zoneFilter");
+  sel.innerHTML='<option value="">🏭 Toutes zones</option>';
+  [...zs].sort().forEach(z=>{const o=document.createElement("option");o.value=z;o.textContent=z;sel.appendChild(o);});
+}
+
+// Filters
+function setS(f,btn){curFilt=f;curPg=0;document.querySelectorAll(".fbtn").forEach(b=>b.classList.remove("act"));btn.classList.add("act");applyFilters();}
+function applyFilters(){
+  const q=(document.getElementById("srch").value||"").toLowerCase();
+  curZone=document.getElementById("zoneFilter").value;curPg=0;
+  filtered=MACHINES.filter(m=>{
+    if(curFilt!=="all"&&m.status!==curFilt)return false;
+    if(curZone&&zone(m.loc)!==curZone)return false;
+    if(q&&!`${m.code} ${m.name} ${m.brand} ${m.loc} ${m.obs}`.toLowerCase().includes(q))return false;
+    return true;
+  });
+  if(sortF){filtered.sort((a,b)=>{const va=a[sortF]||"",vb=b[sortF]||"";return sortA?va.localeCompare(vb,"fr"):vb.localeCompare(va,"fr");});}
+  renderTable();
+}
+function doSort(f){if(sortF===f)sortA=!sortA;else{sortF=f;sortA=true;}applyFilters();}
+
+// Render table
+function renderTable(){
+  const pg=pgSize,total=filtered.length,pages=Math.max(1,Math.ceil(total/pg));
+  if(curPg>=pages)curPg=pages-1;
+  const slice=filtered.slice(curPg*pg,(curPg+1)*pg);
+  document.getElementById("tbl-title").textContent=`${total} / ${MACHINES.length} machines`;
+  document.getElementById("tbl-count").textContent=`Page ${curPg+1}/${pages} · ${slice.length} lignes affichées`;
+
+  document.getElementById("tbody").innerHTML=slice.map(m=>{
+    const zn=zone(m.loc);
+    const scls=m.status==="En marche"?"sp-g":m.status==="À l'arrêt"?"sp-r":"sp-o";
+    const sdot=m.status==="En marche"?"dot-g":m.status==="À l'arrêt"?"dot-r":"dot-o";
+    const hasInc=m.status!=="En marche"&&m.dateInc;
+    return`<tr class="tr" style="border-bottom:1px solid #0f172a;">
+      <td style="padding:7px 9px;" class="hm">
+        <div style="font-size:9px;background:#0f172a;border:1px solid #1e3a5f;border-radius:3px;padding:1px 5px;display:inline-block;color:#64748b;margin-bottom:2px;">${zn}</div>
+        <div style="font-size:9px;color:#334155;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${m.loc}">${m.loc||"–"}</div>
+      </td>
+      <td style="padding:7px 9px;color:#64748b;font-size:10px;white-space:nowrap;font-weight:600;">${m.code||"–"}</td>
+      <td style="padding:7px 9px;font-weight:600;color:#e2e8f0;font-size:11px;">${m.name}</td>
+      <td style="padding:7px 9px;font-size:10px;" class="hm">${m.brand?`<span style="background:#0f172a;border:1px solid #1e3a5f;border-radius:3px;padding:1px 5px;color:#94a3b8;font-size:9px;">${m.brand}</span>`:`<span style="color:#334155;">–</span>`}</td>
+      <td style="padding:7px 9px;white-space:nowrap;">
+        <span class="spill ${scls}"><span class="dot ${sdot}"></span>${m.status}</span>
+      </td>
+      <td style="padding:7px 9px;color:#94a3b8;font-size:10px;max-width:150px;">
+        <span ondblclick="quickObs(${m.id})" title="Double-clic pour édition rapide"
+          style="cursor:text;padding:1px 3px;border-radius:3px;transition:background .12s;display:inline-block;"
+          onmouseover="this.style.background='#0f172a'" onmouseout="this.style.background='transparent'"
+          id="obs-${m.id}">${m.obs||`<span style='color:#1e3a5f'>–</span>`}</span>
+      </td>
+      <td style="padding:7px 9px;font-size:9px;" class="hm">
+        ${hasInc?`<div style="color:#f97316;">${FMT(m.dateInc)}</div>`:`<span style="color:#334155;">–</span>`}
+      </td>
+      <td style="padding:7px 9px;font-size:9px;color:#f97316;font-weight:600;" class="hm">
+        ${hasInc?duration(m.dateInc):"–"}
+      </td>
+      <td style="padding:7px 9px;text-align:center;white-space:nowrap;">
+        <button class="act-btn act-edit" onclick="openEdit(${m.id})" title="Modifier">✏️</button>
+        <button class="act-btn act-del" onclick="askDelete(${m.id})" title="Supprimer" style="margin-left:4px;">🗑</button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  // Pagination
+  const pgEl=document.getElementById("pagination");
+  if(pages<=1){pgEl.innerHTML="";return;}
+  const show=new Set([0,pages-1]);
+  for(let i=Math.max(0,curPg-2);i<=Math.min(pages-1,curPg+2);i++)show.add(i);
+  let html="",prev=-1;
+  [...show].sort((a,b)=>a-b).forEach(i=>{
+    if(prev!==-1&&i-prev>1)html+=`<span style="color:#334155;font-size:11px;padding:0 2px;">…</span>`;
+    html+=`<button class="pg-btn${i===curPg?" cur":""}" onclick="curPg=${i};renderTable()">${i+1}</button>`;
+    prev=i;
+  });
+  pgEl.innerHTML=`<button class="pg-btn" onclick="if(curPg>0){curPg--;renderTable();}" ${curPg===0?"disabled":""}>◀</button>`+html+`<button class="pg-btn" onclick="if(curPg<${pages-1}){curPg++;renderTable();}" ${curPg===pages-1?"disabled":""}>▶</button>`;
+}
+
+// Quick obs edit (double-click)
+function quickObs(id){
+  const m=MACHINES.find(x=>x.id===id);if(!m)return;
+  const sp=document.getElementById("obs-"+id);if(!sp)return;
+  const old=m.obs;
+  const inp=document.createElement("input");
+  inp.type="text";inp.value=old;
+  inp.style.cssText="background:#0f172a;border:1px solid #6366f1;border-radius:3px;padding:2px 5px;color:#e2e8f0;font-size:10px;width:140px;";
+  sp.replaceWith(inp);inp.focus();inp.select();
+  function sv(){m.obs=inp.value;applyFilters();renderAlerts();}
+  inp.addEventListener("blur",sv);
+  inp.addEventListener("keydown",e=>{if(e.key==="Enter")inp.blur();if(e.key==="Escape"){inp.value=old;inp.blur();}});
+}
+
+// ════ MODAL ════
+function openAdd(){
+  editIdx=null;
+  document.getElementById("modal-badge").textContent="Nouveau équipement";
+  document.getElementById("modal-title").textContent="Ajouter une Machine";
+  document.getElementById("btn-del-modal").style.display="none";
+  document.getElementById("f-code").value="";
+  document.getElementById("f-loc").value="";
+  document.getElementById("f-name").value="";
+  document.getElementById("f-brand").value="";
+  document.getElementById("f-status").value="En marche";
+  document.getElementById("f-obs").value="";
+  document.getElementById("f-date").value="";
+  document.getElementById("f-duration").textContent="–";
+  document.getElementById("date-row").style.display="none";
+  document.getElementById("overlay").classList.add("open");
+  document.getElementById("f-name").focus();
+}
+
+function openEdit(id){
+  const m=MACHINES.find(x=>x.id===id);if(!m)return;
+  editIdx=id;
+  document.getElementById("modal-badge").textContent="Modifier équipement";
+  document.getElementById("modal-title").textContent=`${m.name}${m.code?" · "+m.code:""}`;
+  document.getElementById("btn-del-modal").style.display="inline-flex";
+  document.getElementById("f-code").value=m.code;
+  document.getElementById("f-loc").value=m.loc;
+  document.getElementById("f-name").value=m.name;
+  document.getElementById("f-brand").value=m.brand;
+  document.getElementById("f-status").value=m.status;
+  document.getElementById("f-obs").value=m.obs;
+  document.getElementById("f-date").value=m.dateInc||"";
+  const hasInc=m.status!=="En marche";
+  document.getElementById("date-row").style.display=hasInc?"grid":"none";
+  document.getElementById("f-duration").textContent=m.dateInc?duration(m.dateInc):"–";
+  document.getElementById("overlay").classList.add("open");
+}
+
+function closeModal(){document.getElementById("overlay").classList.remove("open");}
+
+function onStatusChange(){
+  const st=document.getElementById("f-status").value;
+  const dr=document.getElementById("date-row");
+  if(st!=="En marche"){
+    dr.style.display="grid";
+    if(!document.getElementById("f-date").value){document.getElementById("f-date").value=NOW_STR();}
+    document.getElementById("f-duration").textContent=duration(document.getElementById("f-date").value);
+  } else {
+    dr.style.display="none";
+  }
+}
+
+function saveModal(){
+  const name=document.getElementById("f-name").value.trim();
+  if(!name){document.getElementById("f-name").style.borderColor="#ef4444";document.getElementById("f-name").focus();return;}
+  document.getElementById("f-name").style.borderColor="#334155";
+  const data={
+    code:document.getElementById("f-code").value.trim(),
+    name,
+    brand:document.getElementById("f-brand").value.trim(),
+    loc:document.getElementById("f-loc").value.trim(),
+    status:document.getElementById("f-status").value,
+    obs:document.getElementById("f-obs").value.trim(),
+    dateInc:document.getElementById("f-status").value!=="En marche"?(document.getElementById("f-date").value||""):""
+  };
+  if(editIdx===null){
+    data.id=nextId++;
+    MACHINES.push(data);
+  } else {
+    const idx=MACHINES.findIndex(m=>m.id===editIdx);
+    if(idx>=0)MACHINES[idx]={...MACHINES[idx],...data};
+  }
+  closeModal();populateZones();updateAll();
+}
+
+function deleteFromModal(){
+  if(editIdx===null)return;
+  closeModal();askDelete(editIdx);
+}
+
+// ════ DELETE CONFIRM ════
+function askDelete(id){
+  delIdx=id;
+  const m=MACHINES.find(x=>x.id===id);
+  document.getElementById("confirm-name").textContent=m?`${m.name}${m.code?" ("+m.code+")":""}`:"";
+  document.getElementById("confirm").classList.add("open");
+}
+function cancelDelete(){document.getElementById("confirm").classList.remove("open");delIdx=null;}
+function confirmDelete(){
+  if(delIdx===null)return;
+  MACHINES=MACHINES.filter(m=>m.id!==delIdx);
+  document.getElementById("confirm").classList.remove("open");
+  delIdx=null;
+  populateZones();updateAll();
+}
+
+// ════ UPDATE ALL ════
+function updateAll(){kpis();drawPie();drawBar();drawGauge();renderAlerts();applyFilters();}
+
+// Init
+populateZones();filtered=[...MACHINES];updateAll();
+let rt2;window.addEventListener("resize",()=>{clearTimeout(rt2);rt2=setTimeout(()=>{drawPie();drawBar();drawGauge();},200);});
+// Refresh durations every minute
+setInterval(()=>{renderAlerts();if(document.getElementById("overlay").classList.contains("open")){const d=document.getElementById("f-date").value;if(d)document.getElementById("f-duration").textContent=duration(d);}renderTable();},60000);
+</script>
+</body>
+</html>
